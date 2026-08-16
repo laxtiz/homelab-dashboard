@@ -23,14 +23,22 @@ container:
 # ---- 服务探针 (http | tcp | udp) ----
 # 探针支持 DSL 表达式提取数据, 详见 README.md
 services:
-  # HTTP 探针示例
-  # - name: "Example HTTP"
-  #   type: http
-  #   url: "http://127.0.0.1:8080"
-  #   timeout: 5s
-  #   extract:
-  #     http_status: "status"
-  #     latency_ms: "latency_ms"
+  # 公网 IP 卡片: 调用 ip.sb 免费 API 获取出口公网 IP 与地理信息。
+  # 这是 HTTP 探针 + DSL 提取的完整示范, 初次使用即可看到效果。
+  # 无需公网访问的环境可注释或删除本服务。
+  - name: "Public IP"
+    type: http
+    url: "https://api.ip.sb/geoip"
+    timeout: 10s
+    interval: 5m              # IP 很少变化, 轮询间隔调大
+    headers:                  # ip.sb 会屏蔽默认 User-Agent
+      User-Agent: "homelab-dashboard"
+    extract:
+      ip: "Jsonpath(json, '$.ip')"
+      country: "Jsonpath(json, '$.country')"
+      city: "Jsonpath(json, '$.city')"
+      isp: "Jsonpath(json, '$.isp')"
+      asn: "Jsonpath(json, '$.asn')"
 
   # TCP 探针 + 正则提取示例 (Redis)
   # - name: "Redis"
