@@ -16,9 +16,9 @@ import (
 
 // Client talks to any Docker-Engine-API compatible runtime socket
 // (docker, podman --compat, etc). Endpoint resolution order:
-//   1. config endpoint
-//   2. $DOCKER_HOST
-//   3. unix:///var/run/docker.sock
+//  1. config endpoint
+//  2. $DOCKER_HOST
+//  3. unix:///var/run/docker.sock
 type Client struct {
 	mu      sync.RWMutex
 	cli     *dockerclient.Client

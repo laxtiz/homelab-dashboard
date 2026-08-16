@@ -14,10 +14,10 @@ import (
 )
 
 type Server struct {
-	hub   *ws.Hub
-	col   *collector.Collector
-	dev   bool
-	app   *echo.Echo
+	hub *ws.Hub
+	col *collector.Collector
+	dev bool
+	app *echo.Echo
 }
 
 func New(hub *ws.Hub, col *collector.Collector, dev bool) *Server {

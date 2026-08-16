@@ -58,14 +58,14 @@ type NetStats struct {
 }
 
 type ServiceStatus struct {
-	Name      string         `json:"name"`
-	Type      string         `json:"type"`
-	Status    string         `json:"status"` // up | down | error
-	LatencyMS float64        `json:"latency_ms"`
-	LastError string         `json:"last_error,omitempty"`
-	Extracted map[string]any `json:"extracted,omitempty"`
+	Name      string          `json:"name"`
+	Type      string          `json:"type"`
+	Status    string          `json:"status"` // up | down | error
+	LatencyMS float64         `json:"latency_ms"`
+	LastError string          `json:"last_error,omitempty"`
+	Extracted map[string]any  `json:"extracted,omitempty"`
 	Container *ContainerState `json:"container,omitempty"`
-	TS        int64          `json:"ts"`
+	TS        int64           `json:"ts"`
 }
 
 type ContainerState struct {

@@ -46,8 +46,8 @@ type SystemConfig struct {
 }
 
 type ContainerConfig struct {
-	Enabled    bool             `yaml:"enabled"`
-	Endpoint   string           `yaml:"endpoint"`
+	Enabled    bool              `yaml:"enabled"`
+	Endpoint   string            `yaml:"endpoint"`
 	Containers []ContainerFilter `yaml:"containers"`
 }
 
@@ -57,19 +57,19 @@ type ContainerFilter struct {
 }
 
 type ServiceConfig struct {
-	Name      string            `yaml:"name"`
-	Type      string            `yaml:"type"` // http | tcp | udp
-	URL       string            `yaml:"url"`
-	Address   string            `yaml:"address"`
-	Timeout   Duration          `yaml:"timeout"`
-	Interval  Duration          `yaml:"interval"`
-	Method    string            `yaml:"method"`
-	Headers   map[string]string `yaml:"headers"`
-	Payload   string            `yaml:"payload"`
-	PayloadB64 string           `yaml:"payloadBase64"`
-	Expect    string            `yaml:"expect"`
-	Extract   map[string]string `yaml:"extract"`
-	Container *ContainerRef     `yaml:"container"`
+	Name       string            `yaml:"name"`
+	Type       string            `yaml:"type"` // http | tcp | udp
+	URL        string            `yaml:"url"`
+	Address    string            `yaml:"address"`
+	Timeout    Duration          `yaml:"timeout"`
+	Interval   Duration          `yaml:"interval"`
+	Method     string            `yaml:"method"`
+	Headers    map[string]string `yaml:"headers"`
+	Payload    string            `yaml:"payload"`
+	PayloadB64 string            `yaml:"payloadBase64"`
+	Expect     string            `yaml:"expect"`
+	Extract    map[string]string `yaml:"extract"`
+	Container  *ContainerRef     `yaml:"container"`
 }
 
 func (s *ServiceConfig) Defaults(g Intervaler) {

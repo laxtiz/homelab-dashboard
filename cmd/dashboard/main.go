@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"dashboard/internal/config"
 	"dashboard/internal/collector"
+	"dashboard/internal/config"
 	"dashboard/internal/server"
 	"dashboard/internal/ws"
 )
