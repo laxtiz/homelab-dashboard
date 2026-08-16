@@ -51,7 +51,7 @@ tasks:
   test:
     desc: 运行全部测试
     deps:
-      - web:install
+      - web:build
     cmds:
       - go vet ./...
       - go test ./...
