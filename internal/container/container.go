@@ -125,9 +125,11 @@ func (c *Client) Collect(ctx context.Context, elapsed time.Duration) map[string]
 }
 
 func (c *Client) applyStats(ctx context.Context, cli *dockerclient.Client, id string, st *dash.ContainerState, elapsed time.Duration) {
+	// 非流式 + 不含 previous sample: client 会附带 one-shot=true,
+	// daemon 立即返回缓存样本 (~10ms)。否则 daemon 要采两个间隔 1s 的
+	// 样本 (~2s/容器), 会拖垮整体采集节奏。
 	resp, err := cli.ContainerStats(ctx, id, dockerclient.ContainerStatsOptions{
-		Stream:                false,
-		IncludePreviousSample: true,
+		Stream: false,
 	})
 	if err != nil {
 		st.Error = err.Error()
@@ -155,13 +157,13 @@ func (c *Client) applyStats(ctx context.Context, cli *dockerclient.Client, id st
 		onlineCPU = raw.CPUStats.OnlineCPUs
 	}
 
-	// PreCPUStats is populated because IncludePreviousSample was set.
+	// one-shot 返回时 precpu_stats 为空, 回退到本采集器上一轮缓存。
 	prevTotal := raw.PreCPUStats.CPUUsage.TotalUsage
 	prevSystem := raw.PreCPUStats.SystemUsage
 	if prevTotal == 0 || prevSystem == 0 {
 		// fall back to the previous cycle tracked by this collector
 		c.mu.RLock()
-		p := c.prevs[id]
+		p := c.prevs[st.Name]
 		c.mu.RUnlock()
 		if p != nil {
 			prevTotal = p.cpuTotal
@@ -187,7 +189,7 @@ func (c *Client) applyStats(ctx context.Context, cli *dockerclient.Client, id st
 		secs = 1
 	}
 	c.mu.RLock()
-	prevNet := c.prevs[id]
+	prevNet := c.prevs[st.Name]
 	c.mu.RUnlock()
 	if prevNet != nil {
 		st.RxRate = float64(diff(rx, prevNet.netRx)) / secs
@@ -195,7 +197,7 @@ func (c *Client) applyStats(ctx context.Context, cli *dockerclient.Client, id st
 	}
 
 	c.mu.Lock()
-	c.prevs[id] = &prevStats{
+	c.prevs[st.Name] = &prevStats{
 		cpuTotal: raw.CPUStats.CPUUsage.TotalUsage,
 		sysTotal: raw.CPUStats.SystemUsage,
 		netRx:    rx,

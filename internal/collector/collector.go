@@ -18,12 +18,65 @@ type Collector struct {
 	cfgMgr *config.Manager
 	hub    *ws.Hub
 
-	mu       sync.RWMutex
-	sys      *system.Collector
-	ctr      *container.Client
-	ctrCfg   config.ContainerConfig
-	probes   []*serviceProbe
-	interval time.Duration
+	mu         sync.RWMutex
+	sys        *system.Collector
+	ctr        *container.Client
+	ctrCfg     config.ContainerConfig
+	probes     []*serviceProbe
+	interval   time.Duration
+	baseCtx    context.Context
+	taskCancel context.CancelFunc
+	pool       *pool
+}
+
+// pool 是采集结果缓存池: 调度器异步采集后写入, 推送器组帧时读取。
+// 推送永不等待采集 —— 读到的总是最近一轮已完成的结果。
+type pool struct {
+	mu         sync.RWMutex
+	system     *types.SystemStats
+	containers map[string]types.ContainerState
+	services   map[string]types.ServiceStatus
+}
+
+func newPool() *pool {
+	return &pool{
+		containers: map[string]types.ContainerState{},
+		services:   map[string]types.ServiceStatus{},
+	}
+}
+
+func (p *pool) setSystem(s *types.SystemStats) {
+	p.mu.Lock()
+	p.system = s
+	p.mu.Unlock()
+}
+
+func (p *pool) setContainers(m map[string]types.ContainerState) {
+	p.mu.Lock()
+	p.containers = m
+	p.mu.Unlock()
+}
+
+func (p *pool) setService(name string, s types.ServiceStatus) {
+	p.mu.Lock()
+	p.services[name] = s
+	p.mu.Unlock()
+}
+
+// snapshot 返回读快照 (map 做拷贝), 供组帧使用, 避免与外层写并发。
+func (p *pool) snapshot() (system *types.SystemStats, containers map[string]types.ContainerState, services map[string]types.ServiceStatus) {
+	p.mu.RLock()
+	defer p.mu.RUnlock()
+	system = p.system
+	containers = make(map[string]types.ContainerState, len(p.containers))
+	for k, v := range p.containers {
+		containers[k] = v
+	}
+	services = make(map[string]types.ServiceStatus, len(p.services))
+	for k, v := range p.services {
+		services[k] = v
+	}
+	return
 }
 
 type serviceProbe struct {
@@ -38,7 +91,7 @@ type serviceProbe struct {
 }
 
 func New(initial *config.Config, hub *ws.Hub) (*Collector, error) {
-	c := &Collector{hub: hub}
+	c := &Collector{hub: hub, pool: newPool()}
 	if err := c.apply(initial, true); err != nil {
 		return nil, err
 	}
@@ -102,74 +155,184 @@ func (c *Collector) apply(cfg *config.Config, initial bool) error {
 }
 
 func (c *Collector) Reload(cfg *config.Config) {
+	c.mu.RLock()
+	baseCtx := c.baseCtx
+	c.mu.RUnlock()
+
 	if err := c.apply(cfg, false); err != nil {
 		log.Printf("collector: reload apply failed: %v", err)
+		return
 	}
+
+	if baseCtx == nil {
+		return
+	}
+	// 立即用新配置补一轮缓存, 避免新探针在首个 tick 前显示 pending
+	go c.round(baseCtx)
+	c.restartTasks(baseCtx)
 }
 
+// Run 启动采集调度器与推送器。推送节奏严格跟随 server.interval,
+// 采集异步进行, 慢探针只会让对应缓存项陈旧而不会阻塞广播。
 func (c *Collector) Run(ctx context.Context) {
-	tick := time.NewTicker(c.interval)
-	defer tick.Stop()
+	c.mu.Lock()
+	c.baseCtx = ctx
+	c.mu.Unlock()
 
-	// immediate first snapshot
-	c.cycle(ctx)
+	// 首轮同步采集, 保证首帧不空
+	c.round(ctx)
+
+	c.restartTasks(ctx)
+
+	c.mu.RLock()
+	iv := c.interval
+	c.mu.RUnlock()
+	push := time.NewTicker(iv)
+	defer push.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case <-tick.C:
+		case <-push.C:
 			c.mu.RLock()
-			iv := c.interval
+			pushIv := c.interval
 			c.mu.RUnlock()
-			tick.Reset(iv)
-			c.cycle(ctx)
+			push.Reset(pushIv)
+			c.hub.Broadcast(c.buildSnapshot())
 		}
 	}
 }
 
-func (c *Collector) cycle(ctx context.Context) {
+// restartTasks 取消上一批采集任务, 并按当前配置重新派发。
+func (c *Collector) restartTasks(ctx context.Context) {
+	c.mu.Lock()
+	if c.taskCancel != nil {
+		c.taskCancel()
+	}
+	taskCtx, cancel := context.WithCancel(ctx)
+	c.taskCancel = cancel
+	c.mu.Unlock()
+
+	c.startTasks(taskCtx)
+}
+
+// round 同步采集一轮写入缓存池。
+func (c *Collector) round(ctx context.Context) {
 	c.mu.RLock()
 	sys := c.sys
 	ctr := c.ctr
-	ctrCfg := c.ctrCfg
-	probes := c.probes
 	interval := c.interval
+	probes := c.probes
 	c.mu.RUnlock()
 
-	snap := &types.Snapshot{TS: time.Now().UnixMilli(), Services: []types.ServiceStatus{}}
+	if sys != nil {
+		c.pool.setSystem(sys.Collect(ctx))
+	}
+	if ctr != nil {
+		c.pool.setContainers(ctr.Collect(ctx, interval))
+	}
+	for _, sp := range probes {
+		c.pool.setService(sp.cfg.Name, sp.poll(ctx, interval))
+	}
+}
+
+// startTasks 按各自的采集周期派发异步任务; 完成后写入缓存池, 推送器不等待。
+func (c *Collector) startTasks(ctx context.Context) {
+	c.mu.RLock()
+	sys := c.sys
+	ctr := c.ctr
+	interval := c.interval
+	probes := c.probes
+	c.mu.RUnlock()
 
 	if sys != nil {
-		snap.System = sys.Collect(ctx)
+		go c.systemTask(ctx, sys, interval)
 	}
-
-	var containers map[string]types.ContainerState
 	if ctr != nil {
-		containers = ctr.Collect(ctx, interval)
-		snap.Containers = containers
+		go c.containerTask(ctx, ctr, interval)
 	}
-
 	for _, sp := range probes {
-		snap.Services = append(snap.Services, sp.poll(ctx, interval))
+		iv := sp.cfg.Interval.Std()
+		if iv <= 0 {
+			iv = interval
+		}
+		go c.serviceTask(ctx, sp, interval, iv)
 	}
+}
 
-	// merge container state into services
-	if len(containers) > 0 && ctrCfg.Enabled {
-		for i := range snap.Services {
-			ref := probes[i].ref
-			if ref == nil || !ref.IsEnabled() {
-				continue
-			}
+func (c *Collector) systemTask(ctx context.Context, sys *system.Collector, interval time.Duration) {
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			c.pool.setSystem(sys.Collect(ctx))
+		}
+	}
+}
+
+func (c *Collector) containerTask(ctx context.Context, ctr *container.Client, interval time.Duration) {
+	t := time.NewTicker(interval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			c.pool.setContainers(ctr.Collect(ctx, interval))
+		}
+	}
+}
+
+func (c *Collector) serviceTask(ctx context.Context, sp *serviceProbe, interval, iv time.Duration) {
+	t := time.NewTicker(iv)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			c.pool.setService(sp.cfg.Name, sp.poll(ctx, interval))
+		}
+	}
+}
+
+// buildSnapshot 从缓存池组帧: 按配置顺序组装服务, TS 代表推送时刻。
+func (c *Collector) buildSnapshot() *types.Snapshot {
+	c.mu.RLock()
+	probes := c.probes
+	ctrCfg := c.ctrCfg
+	c.mu.RUnlock()
+
+	system, containers, services := c.pool.snapshot()
+
+	snap := &types.Snapshot{
+		TS:         time.Now().UnixMilli(),
+		System:     system,
+		Containers: containers,
+		Services:   make([]types.ServiceStatus, 0, len(probes)),
+	}
+	for i, sp := range probes {
+		st, ok := services[sp.cfg.Name]
+		if !ok {
+			st = types.ServiceStatus{Name: sp.cfg.Name, Type: sp.cfg.Type, Status: "pending"}
+		}
+
+		ref := probes[i].ref
+		if len(containers) > 0 && ctrCfg.Enabled && ref != nil && ref.IsEnabled() {
 			cs, ok := containers[ref.Name]
 			if !ok {
 				cs = types.ContainerState{Name: ref.Name, State: "unknown", Error: "container not found"}
 			}
 			cc := cs
-			snap.Services[i].Container = &cc
+			st.Container = &cc
 		}
+		snap.Services = append(snap.Services, st)
 	}
-
-	c.hub.Broadcast(snap)
+	return snap
 }
 
 func (sp *serviceProbe) poll(ctx context.Context, defaultInterval time.Duration) types.ServiceStatus {
