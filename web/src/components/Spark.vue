@@ -44,11 +44,11 @@ function render() {
         data: props.data,
         showSymbol: false,
         smooth: true,
-        lineStyle: { width: 1.5, color: lineColor },
+        lineStyle: { width: 2.5, color: lineColor },
         areaStyle: {
           color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-            { offset: 0, color: hexToRgba(lineColor, 0.25) },
-            { offset: 1, color: hexToRgba(lineColor, 0.02) },
+            { offset: 0, color: hexToRgba(lineColor, 0.5) },
+            { offset: 1, color: hexToRgba(lineColor, 0.15) },
           ]),
         },
       },
@@ -64,7 +64,7 @@ function resize() {
 watch(
   () => props.data,
   () => render(),
-  { deep: false },
+  { deep: true },
 )
 
 onMounted(() => {

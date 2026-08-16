@@ -121,7 +121,7 @@ function openModal(s: any) {
               <span class="stat-val ml-auto" :style="{ color: cpuColor(cpuPct) }">{{ cpuPct.toFixed(1) }}%</span>
             </div>
             <div class="stat-sub">{{ system.cpu.count }} 核心 · load {{ system.load.load1.toFixed(2) }}</div>
-            <Spark :data="cpuHist" :color="cpuColor(cpuPct)" height="36px" />
+            <Spark :data="cpuHist" :color="cpuColor(cpuPct)" height="40px" />
           </div>
 
           <div class="card stat-card">
@@ -131,7 +131,7 @@ function openModal(s: any) {
               <span class="stat-val ml-auto" :style="{ color: memColor(memPct) }">{{ memPct.toFixed(1) }}%</span>
             </div>
             <div class="stat-sub">{{ fmtBytes(system.memory.used) }} / {{ fmtBytes(system.memory.total) }}</div>
-            <Spark :data="memHist" :color="memColor(memPct)" height="36px" />
+            <Spark :data="memHist" :color="memColor(memPct)" height="40px" />
           </div>
 
           <div class="card stat-card">
