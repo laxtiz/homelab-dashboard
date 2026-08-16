@@ -1,0 +1,16 @@
+services:
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: laxtiz/homelab-dashboard:latest
+    container_name: dashboard
+    restart: unless-stopped
+    working_dir: /config
+    volumes:
+      - ./config:/config                          # 配置目录 (可为空, 程序自动生成样板)
+      - /var/run/docker.sock:/var/run/docker.sock # docker.sock 挂载到默认路径
+    # 获取宿主机真实系统指标 (CPU/内存/磁盘/网络)
+    pid: host
+    privileged: true
+    network_mode: host

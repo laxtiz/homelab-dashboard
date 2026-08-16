@@ -1,0 +1,13 @@
+# git
+.git
+
+# build artifacts
+bin/
+*.log
+
+# 前端依赖与本地构建产物 (web/dist 由 web stage 重新构建)
+web/node_modules/
+web/dist/
+
+# 根目录自动生成的运行配置 (模板 config/dashboard.yaml 需保留)
+/dashboard.yaml

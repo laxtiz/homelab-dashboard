@@ -1,0 +1,73 @@
+version: '3'
+
+vars:
+  BIN: dashboard
+
+tasks:
+  default:
+    desc: 构建前端 + 后端单二进制
+    deps:
+      - build
+
+  build:
+    desc: 编译后端二进制 (嵌入前端)
+    deps:
+      - web:build
+    cmds:
+      - go build -o bin/{{.BIN}} ./cmd/dashboard
+
+  run:
+    desc: 直接运行二进制 (配置自动解析)
+    deps:
+      - build
+    cmds:
+      - ./bin/{{.BIN}}
+
+  dev:
+    desc: 后端热开发 (web 用 vite dev, 需先跑 dev:web)
+    cmds:
+      - go run ./cmd/dashboard -dev
+
+  dev:web:
+    desc: 前端 vite dev server (代理 /api /ws 到 :8080)
+    dir: web
+    cmds:
+      - npm run dev
+
+  web:install:
+    desc: 安装前端依赖
+    dir: web
+    cmds:
+      - npm install
+
+  web:build:
+    desc: 构建前端到 web/dist
+    deps:
+      - web:install
+    dir: web
+    cmds:
+      - npm run build
+
+  test:
+    desc: 运行全部测试
+    deps:
+      - web:install
+    cmds:
+      - go vet ./...
+      - go test ./...
+      - cd web && npm run typecheck
+
+  lint:
+    desc: gofmt 检查
+    cmds:
+      - test -z "$(gofmt -l cmd internal)"
+
+  deploy:docker:
+    desc: 用 compose 启动
+    cmds:
+      - docker compose up -d --build
+
+  clean:
+    desc: 清理产物
+    cmds:
+      - rm -rf bin web/dist

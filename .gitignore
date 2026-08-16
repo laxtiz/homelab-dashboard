@@ -1,0 +1,6 @@
+bin/
+web/node_modules/
+web/dist/
+# 项目根目录自动生成的运行配置 (config/ 下的模板需入库)
+/dashboard.yaml
+*.log

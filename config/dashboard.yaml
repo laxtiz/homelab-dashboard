@@ -1,0 +1,43 @@
+# Homelab Dashboard 配置文件
+# 模板: 程序找不到任何配置文件时, 会复制此文件到工作目录。
+# 修改后保存即自动热重载 (实时生效)。
+
+server:
+  addr: ":8080"
+  interval: 5s            # 全局采集/推送周期
+
+# ---- 系统指标 (gopsutil) ----
+system:
+  enabled: true
+  disks: ["/"]            # 监控这些挂载点, 留空 = 全部
+  netInterfaces: []       # 留空 = 全部网卡
+
+# ---- 容器运行时 (Docker Engine API 兼容 socket) ----
+# endpoint 解析顺序: 配置文件 > $DOCKER_HOST > unix:///var/run/docker.sock
+# podman 用户请见 README.md 中的说明
+container:
+  enabled: true
+  endpoint: ""            # 留空 = 默认 docker.sock
+  containers: []          # 留空 = 监控全部运行中容器; 可用 name 或 label 过滤
+
+# ---- 服务探针 (http | tcp | udp) ----
+# 探针支持 DSL 表达式提取数据, 详见 README.md
+services:
+  # HTTP 探针示例
+  # - name: "Example HTTP"
+  #   type: http
+  #   url: "http://127.0.0.1:8080"
+  #   timeout: 5s
+  #   extract:
+  #     http_status: "status"
+  #     latency_ms: "latency_ms"
+
+  # TCP 探针 + 正则提取示例 (Redis)
+  # - name: "Redis"
+  #   type: tcp
+  #   address: "127.0.0.1:6379"
+  #   timeout: 2s
+  #   payload: "INFO server\r\n"
+  #   expect: "redis_version:"
+  #   extract:
+  #     version: "Regex(body, 'redis_version:([0-9.]+)')"
