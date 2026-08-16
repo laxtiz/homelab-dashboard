@@ -165,10 +165,31 @@ services:
 
 ## 开发
 
+### 环境搭建
+
 ```bash
 task web:install     # 安装前端依赖
-task dev             # 后端热开发 (go run -dev)
-task dev:web         # 前端 vite dev (:5173 代理到 :8080)
+```
+
+### 启动开发环境
+
+需要同时运行后端和前端两个服务：
+
+```bash
+# 终端 1: 启动后端 (Go 热重载, 监听 :8080)
+task dev
+
+# 终端 2: 启动前端 Vite dev server (监听 :5173, 代理 API 到 :8080)
+task dev:web
+```
+
+启动后访问 **http://localhost:5173**，前端支持 HMR 热更新，修改代码后浏览器自动刷新，无需手动重建。
+
+> 注意：Vite dev server 会自动将 `/api` 和 `/ws` 请求代理到后端 `:8080`，确保后端先启动。
+
+### 构建与测试
+
+```bash
 task build           # 构建前端 + 单二进制
 task test            # go vet + go test + vue-tsc
 task run             # 运行 bin/dashboard (配置自动解析)

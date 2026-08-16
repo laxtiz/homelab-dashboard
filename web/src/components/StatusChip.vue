@@ -16,18 +16,19 @@ defineProps<{
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 10px;
+  padding: 3px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 600;
+  letter-spacing: 0.3px;
 }
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: currentColor;
 }
-.up { background: rgba(63,185,80,0.15); color: #3fb950; }
-.down { background: rgba(248,81,73,0.15); color: #f85149; }
-.error { background: rgba(210,153,34,0.15); color: #d29922; }
+.up { background: var(--success-dim); color: var(--success); }
+.down { background: var(--error-dim); color: var(--error); }
+.error { background: var(--warn-dim); color: var(--warn); }
 </style>
