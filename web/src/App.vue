@@ -373,7 +373,7 @@ header { display: flex; justify-content: space-between; align-items: center; fle
 .svc-card { display: flex; flex-direction: column; gap: 0; }
 .svc-head { display: flex; justify-content: space-between; align-items: center; }
 .svc-name { font-weight: 600; font-size: 15px; letter-spacing: -0.2px; }
-.svc-meta { color: var(--text-secondary); font-size: 12px; display: flex; align-items: center; gap: 4px; margin-top: 2px; margin-bottom: 8px; }
+.svc-meta { color: var(--text-secondary); font-size: 12px; margin-top: 2px; margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dot-sep { opacity: 0.4; }
 
 /* Metrics 垂直列表 */
@@ -397,7 +397,7 @@ header { display: flex; justify-content: space-between; align-items: center; fle
 .ct-tag { display: inline-flex; align-items: center; justify-content: center; width: calc(33.333% - 4px); padding: 6px 0; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; color: var(--text); background: var(--bg-inset); text-align: center; letter-spacing: 0.2px; }
 
 /* ===== 容器卡片（独立区域） ===== */
-.ct-card { display: flex; flex-direction: column; gap: 6px; }
+.ct-card { display: flex; flex-direction: column; gap: 6px; overflow: hidden; }
 .ct-card-head { display: flex; justify-content: space-between; align-items: center; }
 
 /* State Pill */
