@@ -1,0 +1,54 @@
+[tools]
+go = "1.26"
+node = "22"
+
+# 示例: 项目级环境变量 (含敏感信息请用 mise.local.toml, 勿提交)
+# [env]
+# DOCKER_HOST = "unix:///run/user/1000/podman/podman.sock"
+
+[tasks.default]
+description = "构建并直接运行二进制 (配置自动解析)"
+depends = ["build"]
+run = "./bin/dashboard"
+
+[tasks.build]
+description = "编译后端二进制 (嵌入前端)"
+depends = ["web:build"]
+run = "go build -o bin/dashboard ./cmd/dashboard"
+
+[tasks.dev]
+description = "后端热开发 (web 用 vite dev, 需先跑 web:dev)"
+run = "go run ./cmd/dashboard -dev"
+
+[tasks."web:dev"]
+description = "前端 vite dev server (代理 /api /ws 到 :8080)"
+dir = "web"
+run = "npm run dev"
+
+[tasks."web:install"]
+description = "安装前端依赖"
+dir = "web"
+run = "npm install"
+
+[tasks."web:build"]
+description = "构建前端到 web/dist"
+depends = ["web:install"]
+dir = "web"
+run = "npm run build"
+
+[tasks.test]
+description = "运行全部测试"
+depends = ["web:build"]
+run = [
+  "go vet ./...",
+  "go test ./...",
+  "npm --prefix web run typecheck",
+]
+
+[tasks.lint]
+description = "gofmt 检查"
+run = 'test -z "$(gofmt -l cmd internal)"'
+
+[tasks.clean]
+description = "清理产物"
+run = "rm -rf bin web/dist"

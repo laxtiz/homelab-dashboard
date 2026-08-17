@@ -15,21 +15,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Install Task
-        uses: arduino/setup-task@v2
-      - name: Set up Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: '1.26'
-          cache: true
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: web/package-lock.json
+      - name: Set up mise
+        uses: jdx/mise-action@v3
       - name: Test
-        run: task test
+        run: mise run test
 
   build-push:
     needs: test

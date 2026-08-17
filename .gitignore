@@ -1,6 +1,9 @@
-bin/
+bin/*
+!bin/mise
 web/node_modules/
 web/dist/
+# mise bootstrap 本地化目录 (bin/mise 脚本需入库)
+.mise/
 # 项目根目录自动生成的运行配置 (config/ 下的模板需入库)
 /dashboard.yaml
 *.log

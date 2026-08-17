@@ -168,8 +168,17 @@ services:
 ### 环境搭建
 
 ```bash
-task web:install     # 安装前端依赖
+mise run web:install     # 安装前端依赖
 ```
+
+> 不需要预装 mise 时，用仓库自带的引导脚本（本地化数据在 `.mise/`，已 gitignore）：
+>
+> ```bash
+> ./bin/mise install        # 安装 mise + mise.toml 中声明的工具
+> ./bin/mise run test       # 通过 bootstrap 运行任务 (自动激活 Go/Node)
+> ```
+>
+> 升级 mise 版本时，重新生成引导脚本：`mise generate bootstrap -l -w`。
 
 ### 启动开发环境
 
@@ -177,10 +186,10 @@ task web:install     # 安装前端依赖
 
 ```bash
 # 终端 1: 启动后端 (Go 热重载, 监听 :8080)
-task dev
+mise run dev
 
 # 终端 2: 启动前端 Vite dev server (监听 :5173, 代理 API 到 :8080)
-task dev:web
+mise run web:dev
 ```
 
 启动后访问 **http://localhost:5173**，前端支持 HMR 热更新，修改代码后浏览器自动刷新，无需手动重建。
@@ -190,12 +199,12 @@ task dev:web
 ### 构建与测试
 
 ```bash
-task build           # 构建前端 + 单二进制
-task test            # go vet + go test + vue-tsc
-task run             # 运行 bin/dashboard (配置自动解析)
+mise run build           # 构建前端 + 单二进制
+mise run test            # go vet + go test + vue-tsc
+mise run run             # 运行 bin/dashboard (配置自动解析)
 ```
 
-> 开发时在项目根目录运行（`task run` / `task dev`），配置解析会命中自动生成的 `dashboard.yaml`（已被 `.gitignore` 忽略），也可以直接改 `config/dashboard.yaml` 模板后删除根目录文件重建。
+> 开发时在项目根目录运行（`mise run run` / `mise run dev`），配置解析会命中自动生成的 `dashboard.yaml`（已被 `.gitignore` 忽略），也可以直接改 `config/dashboard.yaml` 模板后删除根目录文件重建。
 
 ## 项目结构
 
